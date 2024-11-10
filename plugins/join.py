@@ -1,23 +1,49 @@
-from telethon import events, TelegramClient
+"""
+────────────────────────────────────────────────────────
+✨       Telegram Join Script by Charlie        ✨
+────────────────────────────────────────────────────────
+
+🔗 This script enables the user to join Telegram channels 
+   and groups via invite links using the Telethon library.
+
+🌟 Features:
+  - Handles both private and public group join requests.
+  - Provides error messages for invalid or expired links.
+  - Informs if the user is already a member of the group.
+
+👨‍💻 Developed and maintained by:
+   Charlie
+
+🔒 Copyright © 2023 Charlie
+   All rights reserved. Unauthorized copying is prohibited.
+
+────────────────────────────────────────────────────────
+"""
+
+from telethon.errors.rpcerrorlist import UserAlreadyParticipantError, InviteHashExpiredError
+from telethon.tl.functions.messages import ImportChatInviteRequest
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.errors.rpcerrorlist import UserAlreadyParticipantError
+from . import ultroid_cmd
 
-# Ensure your bot variable is defined and correctly initialized somewhere in your main script
-# For demonstration, ensure 'bot' is the actual instantiated and logged-in TelegramClient
-
-@bot.on(events.NewMessage(pattern=r"\.join (.+)"))
-async def join_channel_or_group(event):
-    input_str = event.pattern_match.group(1)
+@ultroid_cmd(pattern="join (.+)")
+async def ultroid_join(event):
+    join_link = event.pattern_match.group(1)
 
     try:
-        # Check if the input is a complete invite link or just a username
-        if input_str.startswith('https://t.me/'):
-            # Extract the invite hash or username
-            input_str = input_str.split('/')[-1]
+        if join_link.startswith('https://t.me/+'):
+            invite_hash = join_link.replace("https://t.me/+", "")
+            try:
+                await event.client(ImportChatInviteRequest(invite_hash))
+                await event.eor("✅ Successfully joined the private group!")
+            except InviteHashExpiredError:
+                await event.eor("❌ The invite link is expired or invalid.")
+        else:
+            if join_link.startswith('https://t.me/'):
+                join_link = join_link.split('/')[-1]
 
-        await bot(JoinChannelRequest(input_str))
-        await event.respond(f"Successfully joined {input_str}. Created by @pragyan.")
+            await event.client(JoinChannelRequest(join_link))
+            await event.eor(f"✅ Successfully joined {join_link}!")
     except UserAlreadyParticipantError:
-        await event.respond(f"You're already a member of {input_str}. Created by @pragyan.")
+        await event.eor(f"⚠️ You're already a member of {join_link}.")
     except Exception as e:
-        await event.respond(f"Failed to join {input_str}. Error: {str(e)}. Created by @pragyan.")
+        await event.eor(f"❌ Failed to join {join_link}. Error: {str(e)}.")
